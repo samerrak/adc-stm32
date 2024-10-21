@@ -55,7 +55,8 @@
 ADC_HandleTypeDef hadc1;
 
 /* USER CODE BEGIN PV */
-
+uint32_t vref=0;
+uint32_t temp=0; // set as global variables to watch them
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -103,8 +104,10 @@ int main(void)
   MX_ADC1_Init(0);
   /* USER CODE BEGIN 2 */
 
-  uint32_t vref=10000000;
-  uint32_t temp=0;
+  // first pass of program ensure that it is in vref mode to get value to calculate temperature
+  vref=refVoltage();
+  int mode = 0; // mode 0 vref, mode 1 temp
+  HAL_GPIO_WritePin(myLed2_GPIO_Port, myLed2_Pin, GPIO_PIN_RESET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -115,24 +118,29 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	// first pass of program ensure that it is in vref mode to get value to calculate temperature
-	if (vref==10000000) {
-		vref = refVoltage();
-	}
-	else {
-		int status = HAL_GPIO_ReadPin(myButton_GPIO_Port, myButton_Pin); //tutorial
-		if (status == 0) {
-			HAL_GPIO_WritePin(myLed2_GPIO_Port, myLed2_Pin, GPIO_PIN_SET);
+	int status = HAL_GPIO_ReadPin(myButton_GPIO_Port, myButton_Pin); //tutorial
+	if (status == 0) {
+		if (mode == 0) {
+			mode = 1; //pressed need to switch to temperature mode and turn on LED since it was in vref mode
 			MX_ADC1_Init(1);
-			temp = tempSensor(vref);
-
+			HAL_GPIO_WritePin(myLed2_GPIO_Port, myLed2_Pin, GPIO_PIN_SET);
 		}
-		else { //button not pressed
+		else {
+			mode = 0; // pressed need to switch from temp mode to vref mode and turn off MED
 			HAL_GPIO_WritePin(myLed2_GPIO_Port, myLed2_Pin, GPIO_PIN_RESET);
 			MX_ADC1_Init(0);
-			vref = refVoltage();
 		}
 	}
+	
+ 
+  if (HAL_GPIO_ReadPin(myLed2_GPIO_Port, myLed2_Pin) == GPIO_PIN_SET) {
+		temp = tempSensor(vref); // if LED is one keep on reading temperature
+  }
+  else {
+		vref = refVoltage(); // if LED is off keep on reasing reference voltage
+
+  }
+
 
 
   }
