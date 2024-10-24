@@ -101,8 +101,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_ADC1_Init(0);
   /* USER CODE BEGIN 2 */
+  MX_ADC1_Init(0);
 
   // first pass of program ensure that it is in vref mode to get value to calculate temperature
   vref=refVoltage();
@@ -118,15 +118,23 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	int status = HAL_GPIO_ReadPin(myButton_GPIO_Port, myButton_Pin); //tutorial
+	int status;
+	for (int i=0; i< 3; i++) { //polling sometimes not capturing so try twice
+		status = HAL_GPIO_ReadPin(myButton_GPIO_Port, myButton_Pin); //tutorial
+		if (status == 0) {
+			break;
+		}
+	}
+
 	if (status == 0) {
 		if (mode == 0) {
 			mode = 1; //pressed need to switch to temperature mode and turn on LED since it was in vref mode
-			MX_ADC1_Init(1);
 			HAL_GPIO_WritePin(myLed2_GPIO_Port, myLed2_Pin, GPIO_PIN_SET);
+			MX_ADC1_Init(1);
+
 		}
 		else {
-			mode = 0; // pressed need to switch from temp mode to vref mode and turn off MED
+			mode = 0; // pressed need to switch from temp mode to vref mode and turn off LED
 			HAL_GPIO_WritePin(myLed2_GPIO_Port, myLed2_Pin, GPIO_PIN_RESET);
 			MX_ADC1_Init(0);
 		}
@@ -199,7 +207,7 @@ void SystemClock_Config(void)
 
 /**
   * @brief ADC1 Initialization Function
-  * @param int mode - mode 0 for vref mode 1 for temp sensor
+  * @param None
   * @retval None
   */
 static void MX_ADC1_Init(int mode)
@@ -218,7 +226,7 @@ static void MX_ADC1_Init(int mode)
   /** Common config
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV10; // prescaler
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
@@ -239,15 +247,26 @@ static void MX_ADC1_Init(int mode)
 
   /** Configure Regular Channel
   */
-
-  /* USER CODE BEGIN ADC1_Init 2 */
-  if (mode == 0)
-	  sConfig.Channel = ADC_CHANNEL_VREFINT;
-  else
-	  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-
+  sConfig.Channel = ADC_CHANNEL_VREFINT;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_247CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+  if (mode == 0) {
+	  sConfig.Channel = ADC_CHANNEL_VREFINT;
+	  sConfig.SamplingTime = ADC_SAMPLETIME_92CYCLES_5; //STM32L475xx manual pg 93, 12 us / (10/48Mhz) = 57.6 CCs
+  }
+  else {
+	  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+	  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;//STM32L475xx manual pg 93, 120 us / (10/48Mhz) = 576 CCs
+  }
+  sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -305,7 +324,7 @@ uint32_t pollData() {
 	HAL_ADC_Start(&hadc1); // pg 109 in HAL Driver Manual
 
   // Poll for reference values
-  if (HAL_OK != HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY-1))  //pg 69 in HAL driver manual
+  if (HAL_OK != HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY-1))  //pg 69 in HAL driver manual // change time
     return -1; // if the return type is not HAL_OK, and is one of the other enums then we have failed
 	uint32_t POLLEDDATA = HAL_ADC_GetValue(&hadc1); // pg 110 in HAL Driver Manual
 
