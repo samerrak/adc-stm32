@@ -119,7 +119,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 	int status;
-	for (int i=0; i< 3; i++) { //polling sometimes not capturing so try twice
+	for (int i=0; i<1; i++) { //polling sometimes not capturing so try twice
 		status = HAL_GPIO_ReadPin(myButton_GPIO_Port, myButton_Pin); //tutorial
 		if (status == 0) {
 			break;
@@ -226,7 +226,7 @@ static void MX_ADC1_Init(int mode)
   /** Common config
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV10; // prescaler
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1; // prescaler is 1
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
@@ -260,11 +260,11 @@ static void MX_ADC1_Init(int mode)
   /* USER CODE BEGIN ADC1_Init 2 */
   if (mode == 0) {
 	  sConfig.Channel = ADC_CHANNEL_VREFINT;
-	  sConfig.SamplingTime = ADC_SAMPLETIME_92CYCLES_5; //STM32L475xx manual pg 93, 12 us / (10/48Mhz) = 57.6 CCs
+	  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5; //STM32L475xx manual pg 93, 12 us / (1/48Mhz) = 576 CCs
   }
   else {
 	  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-	  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;//STM32L475xx manual pg 93, 120 us / (10/48Mhz) = 576 CCs
+	  sConfig.SamplingTime = ADC_SAMPLETIME_247CYCLES_5;//STM32L475xx manual pg 165, 5 us / (1/48Mhz) = 240 CCs
   }
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -324,8 +324,7 @@ uint32_t pollData() {
 	HAL_ADC_Start(&hadc1); // pg 109 in HAL Driver Manual
 
   // Poll for reference values
-  if (HAL_OK != HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY-1))  //pg 69 in HAL driver manual // change time
-    return -1; // if the return type is not HAL_OK, and is one of the other enums then we have failed
+	while (HAL_OK != HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY-1));  //pg 69 in HAL driver manual // change time
 	uint32_t POLLEDDATA = HAL_ADC_GetValue(&hadc1); // pg 110 in HAL Driver Manual
 
   return POLLEDDATA;
@@ -355,9 +354,7 @@ uint32_t refVoltage() {
 	// Our implementation pg 692 RM0432 Reference manual
 	uint32_t VOLTAGEREF1 = VREFCHARAC * (VREFINTCAL + 0.0) / (VREFINTDATA); // I add 0.0 to convert to floats to have accurate result
 
-	if (HAL_OK != HAL_ADC_Stop(&hadc1)) // pg 107 in HAL driver manual
-    return -1;
-
+	while (HAL_OK != HAL_ADC_Stop(&hadc1)); // pg 107 in HAL driver manual
 	return ((VOLTAGEREF + VOLTAGEREF1) / 2);
 
 }
@@ -376,9 +373,7 @@ uint32_t tempSensor(uint32_t VREFPLUS) {
   //Our implementation pg 691 RM0432 Reference manual, Based on the manual TSDATA must be converted to the VREF+
   uint32_t TEMPREAL1 = (((TSCAL2TEMP - TSCAL1TEMP + 0.0)/(TSCAL2 - TSCAL1)) * ((((3304+0.0)/3000)*TSDATA) - TSCAL1))+ 30;
 
-  if (HAL_OK != HAL_ADC_Stop(&hadc1)) // pg 107 in HAL driver manual
-    return -1;
-
+  while (HAL_OK != HAL_ADC_Stop(&hadc1)); // pg 107 in HAL driver manual
 
   return (TEMPREAL + TEMPREAL1) / 2;
 

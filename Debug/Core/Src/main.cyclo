@@ -3,7 +3,7 @@
 ../Core/Src/main.c:213:13:MX_ADC1_Init	5
 ../Core/Src/main.c:287:13:MX_GPIO_Init	1
 ../Core/Src/main.c:319:10:pollData	2
-../Core/Src/main.c:335:5:buttonOn	2
-../Core/Src/main.c:347:10:refVoltage	3
-../Core/Src/main.c:367:10:tempSensor	4
-../Core/Src/main.c:393:6:Error_Handler	1
+../Core/Src/main.c:334:5:buttonOn	2
+../Core/Src/main.c:346:10:refVoltage	3
+../Core/Src/main.c:364:10:tempSensor	4
+../Core/Src/main.c:388:6:Error_Handler	1
